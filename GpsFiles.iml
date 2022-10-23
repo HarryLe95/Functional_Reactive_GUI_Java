@@ -21,6 +21,15 @@
         </SOURCES>
       </library>
     </orderEntry>
-    <orderEntry type="library" name="swidgets" level="project" />
+    <orderEntry type="library" exported="" name="swidgets" level="project" />
+    <orderEntry type="module-library" exported="">
+      <library>
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/../sodium/book/swidgets/java/target/sodium-swidgets-1.1.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
   </component>
 </module>
