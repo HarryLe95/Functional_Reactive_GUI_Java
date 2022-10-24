@@ -1,3 +1,16 @@
+/**
+ * GUI Testing for label disappearing requirement in display field 2 and 3.
+ *
+ * GUI contains a button that shows "Hello" on the panel. The "Hello" label automatically disappears after 3s
+ * unless the button is clicked on again. The clicking of the button simulates a data arrival event, which is
+ * shown on the display field and cleared after 3s unless a new arrival event occurs.
+ *
+ * Button clicking triggers an event that records the time of clicking by updating CellLoop<Long> tClick and an event
+ * sClickedLabel that updates the label with "Hello". sTick event fired every 100ms triggers a logic that checks for
+ * whether 3s has elapsed since the last tClick, which then fires an sClearLabel event that clears the label.
+ * sClickedLabel has priority over sClearLabel.
+ */
+
 import nz.sodium.*;
 import nz.sodium.time.MillisecondsTimerSystem;
 import nz.sodium.time.TimerSystem;
@@ -8,7 +21,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.util.Optional;
 
-public class DisappearingLabel {
+public class DisappearingLabelTest {
     public static void main(String[] args) {
         TimerSystem sys = new MillisecondsTimerSystem();
         Cell<Long> time = sys.time;
@@ -50,7 +63,7 @@ public class DisappearingLabel {
         long tLast = t0;
         while (true) {
             long t = System.currentTimeMillis();
-            long tIdeal = tLast + 20;
+            long tIdeal = tLast + 100;
             long toWait = tIdeal - t;
             if (toWait > 0)
                 try { Thread.sleep(toWait); } catch (InterruptedException e) {}
