@@ -1,107 +1,89 @@
+/**
+ * GUI experiment with filter to test functionality for task 3 of the assignment.
+ * GUI first row contains an input field, which is fed through a filter if SetNumber button is clicked.
+ * Filter is controlled by paramters in the second row.
+ *
+ */
+
 import nz.sodium.Cell;
 import nz.sodium.Stream;
-import swidgets.SButton;
-import swidgets.SLabel;
-import swidgets.STextField;
+import nz.sodium.Transaction;
+import src.*;
 
 import javax.swing.*;
 import java.awt.*;
 
-public class FilterTest {
-    public static final Dimension panelSize = new Dimension(450,30);
-    public static final Dimension buttonSize = new Dimension(100,20);
-    public static final Dimension textSize = new Dimension(150,20);
-    public static final Dimension labelSize = new Dimension(150,20);
-    public static final Dimension spacing = new Dimension(10,10);
-
-    public static JPanel addPanel(int axis) {
-        JPanel panel = new JPanel();
-        panel.setLayout(new BoxLayout(panel, axis));
-        panel.setMinimumSize(panelSize);
-        panel.setMaximumSize(panelSize);
-        return panel;
+public class FilterTest extends GpsGUI {
+    private GTextField inputField;
+    private GButton setNumberButton;
+    private GLabel filteredLabel;
+    private GTextField ubField;
+    private GButton setUBButton;
+    private GLabel ubLabel;
+    private int maxInt;
+    private int minInt;
+    public FilterTest(String name, Dimension windowSize) {
+        super(name, windowSize);
+        maxInt = (int) (Math.pow(2, 31) - 1);
+        minInt = -(int) Math.pow(2,31);
+        inputField = new GTextField("0");
+        setNumberButton = new GButton("SetNumber");
+        ubField = new GTextField("0");
+        setUBButton = new GButton("SetBound");
     }
 
-    public static void addComponent(JPanel panel, Component component, boolean boxSpacing) {
-        panel.add(component);
-        if (boxSpacing) {
-            panel.add(Box.createRigidArea(spacing));
-        }
+    public void addNumberRow(GPanel mainPanel, Cell<Integer> ub) {
+        GPanel row1 = new GPanel(BoxLayout.LINE_AXIS);
+
+        Stream<Integer> valueInt = setNumberButton.sClicked.snapshot(
+                inputField.text, ((u, i) -> {
+                    try {
+                        return Integer.parseInt(i);
+                    } catch (NumberFormatException e) {
+                        return maxInt;
+                    }
+                })).filter(i -> i <= ub.sample());
+        filteredLabel = new GLabel(valueInt.hold(0).map(
+                i -> Integer.toString(i)), true);
+
+        row1.add(inputField);
+        row1.add(setNumberButton);
+        row1.add(filteredLabel);
+        mainPanel.add(row1);
     }
 
-    public static SLabel createLabel(Cell<String> text, boolean setBackgroundColor) {
-        SLabel label = new SLabel(text);
-        label.setMinimumSize(labelSize);
-        label.setMaximumSize(labelSize);
-        if (setBackgroundColor) {
-            label.setBackground(Color.WHITE);
-            label.setOpaque(true);
-        }
-        return label;
-    }
+    public Cell<Integer> addFilterRow(GPanel mainPanel) {
+        GPanel row2 = new GPanel(BoxLayout.LINE_AXIS);
+        Cell<Integer> ub = setUBButton.sClicked.snapshot(ubField.text,
+                (u, i) -> {
+                    try {
+                        return Math.max(Math.min(Integer.parseInt(i),maxInt),minInt);
+                    } catch (NumberFormatException e) {
+                        return maxInt;
+                    }
+                }).hold(maxInt);
 
-    public static STextField createTextField(String initText) {
-        STextField label = new STextField(initText);
-        label.setMinimumSize(textSize);
-        label.setMaximumSize(textSize);
-        return label;
-    }
+        ubLabel = new GLabel(ub.map(i -> Integer.toString(i)), true);
 
-    public static SButton createButton(String initText){
-        SButton button = new SButton(initText);
-        button.setMinimumSize(buttonSize);
-        button.setMaximumSize(buttonSize);
-        return button;
+
+        row2.add(ubField);
+        row2.add(setUBButton);
+        row2.add(ubLabel);
+        mainPanel.add(row2);
+        return ub;
     }
 
     public static void main(String[] args) {
-        JFrame frame = new JFrame("Filter Test");
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-
-        JPanel mainPanel = addPanel(BoxLayout.PAGE_AXIS);
-        JPanel row1 = addPanel(BoxLayout.LINE_AXIS);
-        JPanel row2 = addPanel(BoxLayout.LINE_AXIS);
-
-        mainPanel.add(row1);
-        mainPanel.add(row2);
-        frame.add(mainPanel);
-
-        STextField valueText = createTextField("0");
-        SButton setNum = createButton("SetNumbr");
-        STextField upperBound = createTextField("0");
-        SButton setBound = createButton("SetBound");
-
-        Cell<Integer> ub = setBound.sClicked.snapshot(upperBound.text,
-                (u,i) -> {
-                    int maxInt = (int) Math.pow(2,31)-1;
-                    try{
-                        int ub_ = Integer.parseInt(i);
-                        return ub_>maxInt?maxInt:ub_;
-                    }catch (NumberFormatException e){
-                        return maxInt;
-                    }
-                }).hold((int) Math.pow(2,31)-1);
-
-        SLabel upperBoundLabel = createLabel(ub.map(i->Integer.toString(i)),true);
-
-        Stream<Integer> valueInt = setNum.sClicked.snapshot(valueText.text, ((u, i) -> {
-            try{
-                return Integer.parseInt(i);
-            }catch (NumberFormatException e){
-                return (int) Math.pow(2,31)-1;
-            }
-        })).filter(i->i<= ub.sample());
-        SLabel valueLabel = createLabel(valueInt.hold(0).map(i->Integer.toString(i)),true);
-
-        addComponent(row1,valueText,true);
-        addComponent(row1,setNum,true);
-        addComponent(row1,valueLabel,true);
-        addComponent(row2, upperBound,true);
-        addComponent(row2, setBound, true);
-        addComponent(row2, upperBoundLabel, true);
-
-
-        frame.setSize(500,130);
-        frame.setVisible(true);
+        FilterTest test = new FilterTest("FilterTest",new Dimension(500,120));
+        GPanel mainPanel = new GPanel(BoxLayout.PAGE_AXIS);
+        Transaction.runVoid(
+                ()->{
+                    Cell<Integer> ub = test.addFilterRow(mainPanel);
+                    test.addNumberRow(mainPanel,ub);
+                }
+        );
+        test.frame.add(mainPanel);
+        test.frame.setVisible(true);
+        test.runLoop(100);
     }
 }

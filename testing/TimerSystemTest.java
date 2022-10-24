@@ -1,19 +1,17 @@
 /**
  * GUI experiment with sodium TimerSystem. GUI contains a timer on the screen that is incremented every second.
- *
  * Every 100 ms, event sMain is fired which has no handler.
  */
 
 import nz.sodium.*;
-import nz.sodium.time.MillisecondsTimerSystem;
-import nz.sodium.time.TimerSystem;
-import swidgets.*;
-import testing.GPanel;
-import testing.GpsGUI;
+
+import src.GLabel;
+import src.GPanel;
+import src.GpsGUI;
+
 
 import javax.swing.*;
 import java.awt.*;
-import java.util.Optional;
 
 
 public class TimerSystemTest extends GpsGUI {
@@ -22,35 +20,22 @@ public class TimerSystemTest extends GpsGUI {
         super(name, windowSize);
     }
 
-    public static void main(String[] args) {
-        TimerSystemTest test = new TimerSystemTest("Timer Test", new Dimension(600,150));
-        GPanel mainPanel = new GPanel(BoxLayout.PAGE_AXIS);
-
-        long t0 = System.currentTimeMillis();
-        long tLast = t0;
-
-        GPanel.GLabel label = Transaction.run(
-                () -> {
-                    CellLoop<Double> timeLoop = new CellLoop<>();
-                    GPanel.GLabel label_ = new GPanel.GLabel(timeLoop.map(i -> String.format("%.3f",i)));
-                    timeLoop.loop(test.time);
-                    return label_;
-                }
-        );
+    public void addLabel() {
+        GPanel mainPanel = new GPanel(BoxLayout.LINE_AXIS);
+        CellLoop<Double> timeLoop = new CellLoop<>();
+        GLabel label = new GLabel(timeLoop.map(i -> String.format("%.3f", i)));
+        timeLoop.loop(time);
+        mainPanel.add(new GLabel(new Cell<>("Time elapsed")));
         mainPanel.add(label);
-        test.frame.add(mainPanel);
+        frame.add(mainPanel);
+    }
+
+    public static void main(String[] args) {
+        TimerSystemTest test = new TimerSystemTest("Timer Test", new Dimension(300, 80));
+        Transaction.runVoid(
+                ()->{test.addLabel();}
+        );
         test.frame.setVisible(true);
-
-
-        while (true) {
-            long t = System.currentTimeMillis();
-            long tIdeal = tLast + 100;
-            long toWait = tIdeal - t;
-            if (toWait > 0)
-                try { Thread.sleep(toWait); } catch (InterruptedException e) {}
-            test.time.send((double)(tIdeal - t0) * 0.001);
-            test.sTick.send(Unit.UNIT);
-            tLast = tIdeal;
-        }
+        test.runLoop(100);
     }
 }

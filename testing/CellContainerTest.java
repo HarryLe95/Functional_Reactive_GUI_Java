@@ -1,118 +1,126 @@
 /**
- * GUI Testing for Cell of container data type. GUI will show the running sum of all seconds elapsed.
- *
- * Every 100ms, sTick is fired, triggering a logic check for whether 1s has passed from the previous array Update.
- * If true, event sUpdate is fired, triggering the update of Cell<ArrayList<Integer>> array, which adds the current
- * elapsed time from 0 in seconds.
- *
- */
+ * GUI experiment to test continuous addition and removal of items in a container at fix intervals.
+ * <p>
+ * Every 1s, an addition event causes an internal list to add an item with a value of 1.
+ * Every 1s, a removal event causes the list to remove all items older than 5s ago.
+ * The screen will show  a running sum, which stablises to 5.
+ * Under the hood it should look like this:
+ * 0 - {}
+ * 1 - {1:1}
+ * 2 - {1:1,2:1}
+ * 3 - {1:1,2:1,3:1}
+ * 4 - {1:1,2:1,3:1,4:1}
+ * 5 - {1:1,2:1,3:1,4:1,5:1}
+ * 6 - {2:1,3:1,4:1,5:1,6:1} - event recorded at time 1 removed
+ * 7 - {3:1,4:1,5:1,6:1,7:1} - event recorded at time 2 removed ...
+ * */
 
 import nz.sodium.*;
-import nz.sodium.time.MillisecondsTimerSystem;
-import nz.sodium.time.TimerSystem;
-import swidgets.SLabel;
+import src.*;
+
 
 import javax.swing.*;
 import java.awt.*;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Optional;
 
 
-public class CellContainerTest {
-    public Cell<Long> time;
+public class CellContainerTest extends GpsGUI {
+    private GLabel timeElapsedLabel;
 
-    public StreamSink<Unit> sTick;
+    private GLabel timeLastAddLabel;
 
-    private TimerSystem sys;
+    private GLabel timeLastRemoveLabel;
+    private GLabel timeRunningSumLabel;
 
-
-    public CellContainerTest(){
-        Transaction.runVoid(
-                ()->{
-                    this.sys = new MillisecondsTimerSystem();
-                    this.time = sys.time;
-                    this.sTick = new StreamSink<Unit>();
-                }
-        );
+    public CellContainerTest(String name, Dimension windowSize) {
+        super(name, windowSize);
     }
 
+    public void addLabel(double dtAdd, double dtRemove) {
+        GPanel mainPanel = new GPanel(BoxLayout.PAGE_AXIS);
+        GPanel row1 = new GPanel(BoxLayout.LINE_AXIS);
+        GPanel row2 = new GPanel(BoxLayout.LINE_AXIS);
+
+
+        CellLoop<HashMap<Double, Double>> timeDict = new CellLoop<>();
+        CellLoop<Double> timeLastAdd = new CellLoop<>();
+        CellLoop<Double> timeLastRemove = new CellLoop<>();
+
+        Stream<Unit> sAdd = Stream.filterOptional(
+                sTick.map(u -> {
+                    return time.sample() - timeLastAdd.sample() >= dtAdd
+                            ? Optional.of(Unit.UNIT)
+                            : Optional.<Unit>empty();
+                })
+        );
+
+
+        Stream<HashMap<Double, Double>> sAddValue = sAdd.snapshot(timeDict, (u,t)->{
+           HashMap<Double,Double> newDict = new HashMap<>(t);
+           newDict.put(time.sample(), 1.0);
+           return newDict;
+        });
+
+        Stream<HashMap<Double, Double>> sRemoveValue = sAdd.snapshot(timeDict, (u,t)->{
+            HashMap<Double,Double> newDict = new HashMap<>(t);
+            ArrayList<Double> toRemove = new ArrayList<>();
+            for (double key: newDict.keySet()){
+                if (key <= time.sample()-dtRemove){
+                    toRemove.add(key);
+                }
+            }
+            for (double key: toRemove){
+                newDict.remove(key,newDict.get(key));
+            }
+            newDict.put(time.sample(), 1.0);
+            return newDict;
+        });
+
+        Stream<HashMap<Double,Double>> sMerge = sRemoveValue.orElse(sAddValue);
+
+        timeLastAdd.loop(sAdd.map(u -> time.sample()).hold(0.0));
+        timeLastRemove.loop(sAdd.map(u->time.sample()).hold(0.0));
+        timeDict.loop(sMerge.hold(new HashMap<>()));
+
+        timeElapsedLabel = new GLabel(time.map(i->String.format("%.3f",i)));
+        timeLastAddLabel = new GLabel(timeLastAdd.map(i->String.format("%.3f",i)));
+        timeLastRemoveLabel = new GLabel(timeLastRemove.map(i->String.format("%.3f",i)));
+        timeRunningSumLabel = new GLabel(timeDict.map(
+                i -> {
+                    double sum = 0;
+                    for (double j : i.values()) {
+                        sum += j;
+                    }
+                    return String.format("%.3f",sum);
+                }
+        ));
+
+        row1.add(new GLabel(new Cell<>("Time Elapsed")));
+        row1.add(timeElapsedLabel);
+        row1.add(new GLabel(new Cell<>("Running Sum")));
+        row1.add(timeRunningSumLabel);
+        row2.add(new GLabel(new Cell<>("Time Last Add")));
+        row2.add(timeLastAddLabel);
+        row2.add(new GLabel(new Cell<>("Time Last Remove")));
+        row2.add(timeLastRemoveLabel);
+
+        mainPanel.add(row1);
+        mainPanel.add(row2);
+        frame.add(mainPanel);
+    }
 
     public static void main(String[] args) {
-        CellContainerTest GUI = new CellContainerTest();
-
-        JFrame frame = new JFrame("Counter");
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-
-        JPanel mainPanel = new JPanel();
-        mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.PAGE_AXIS));
-        JPanel row1 = new JPanel();
-        row1.setLayout(new BoxLayout(row1, BoxLayout.LINE_AXIS));
-
-        Long t0 = GUI.time.sample();
-
+        CellContainerTest test = new CellContainerTest("Running Test", new Dimension(600, 110));
         Transaction.runVoid(
                 () -> {
-                    CellLoop<ArrayList<Integer>> array = new CellLoop<>();
-                    CellLoop<Integer> counter = new CellLoop<>();
-                    CellLoop<Double> timeLoop = new CellLoop<>();
-                    SLabel label = new SLabel(timeLoop.map(i -> Double.toString(i)));
-                    SLabel counterLabel = new SLabel(counter.map(i -> Integer.toString(i)));
-                    SLabel runningSumLabel = new SLabel(array.map(
-                            i -> {
-                                int sum = 0;
-                                for (int j:i){
-                                    sum+=j;
-                                }
-                                return Integer.toString(sum);
-                            }
-                    ));
-
-                    Stream<Unit> sUpdate = Stream.filterOptional(
-                            GUI.sTick.snapshot(counter, (u,c)->
-                                    (GUI.time.sample() - t0)/1000 > c
-                                            ?Optional.of(Unit.UNIT) :Optional.<Unit>empty()
-                            ));
-
-                    counter.loop(sUpdate.snapshot(counter, (u,c)->c+1).hold(0));
-                    array.loop(sUpdate.snapshot(array,counter, (u,a,c)-> {
-                                ArrayList<Integer> newList = new ArrayList<>(a);
-                                newList.add(c);
-                                return newList;
-                            }
-                    ).hold(new ArrayList<>()));
-                    timeLoop.loop(GUI.time.map(i -> (double) (i-t0)/1000));
-                    row1.add(new SLabel(new Cell<String>("Time Elapsed")));
-                    row1.add(Box.createRigidArea(new Dimension(5, 0)));
-                    row1.add(label);
-                    row1.add(Box.createRigidArea(new Dimension(5, 0)));
-                    row1.add(new SLabel(new Cell<String>("Seconds Elapsed")));
-                    row1.add(Box.createRigidArea(new Dimension(5, 0)));
-                    row1.add(counterLabel);
-                    row1.add(Box.createRigidArea(new Dimension(5, 0)));
-                    row1.add(new SLabel(new Cell<String>("Running Sum")));
-                    row1.add(Box.createRigidArea(new Dimension(5, 0)));
-                    row1.add(runningSumLabel);
-                    row1.add(Box.createRigidArea(new Dimension(5, 0)));
+                    test.addLabel(1,5);
                 }
         );
-        mainPanel.add(row1);
-        frame.add(mainPanel);
-        frame.setSize(400,160);
-        frame.setVisible(true);
 
-        long tCurrent = GUI.time.sample();
-        while (true) {
-            long t = GUI.time.sample();
-            long tDest = tCurrent + 100;
-            long tDiff = tDest - t;
-            if (tDiff > 0){
-                try {Thread.sleep(tDiff);}
-                catch (InterruptedException e){}
-            }
-            GUI.sTick.send(Unit.UNIT);
-            tCurrent = tDest;
-        }
+        test.frame.setVisible(true);
+        test.runLoop(10);
+
     }
-
-
 }
