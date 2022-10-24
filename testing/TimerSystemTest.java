@@ -8,59 +8,49 @@ import nz.sodium.*;
 import nz.sodium.time.MillisecondsTimerSystem;
 import nz.sodium.time.TimerSystem;
 import swidgets.*;
+import testing.GPanel;
+import testing.GpsGUI;
 
 import javax.swing.*;
 import java.awt.*;
 import java.util.Optional;
 
 
-public class TimerSystemTest {
+public class TimerSystemTest extends GpsGUI {
 
-    static Stream<Long> periodic(TimerSystem sys, long period) {
-        Cell<Long> time = sys.time;
-        CellLoop<Optional<Long>> oAlarm = new CellLoop<>();
-        Stream<Long> sAlarm = sys.at(oAlarm);
-        oAlarm.loop(
-                sAlarm.map(t -> Optional.of(t + period))
-                        .hold(Optional.<Long>of(time.sample() + period)));
-        return sAlarm;
+    public TimerSystemTest(String name, Dimension windowSize) {
+        super(name, windowSize);
     }
 
     public static void main(String[] args) {
-        TimerSystem sys = new MillisecondsTimerSystem();
-        Cell<Long> time = sys.time;
-        StreamSink<Unit> sMain = new StreamSink<Unit>();
+        TimerSystemTest test = new TimerSystemTest("Timer Test", new Dimension(600,150));
+        GPanel mainPanel = new GPanel(BoxLayout.PAGE_AXIS);
 
-        JFrame frame = new JFrame("Counter");
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setLayout(new FlowLayout());
+        long t0 = System.currentTimeMillis();
+        long tLast = t0;
 
-        long t0 = time.sample();
-        long tCurrent = t0;
-
-        Transaction.runVoid(
+        GPanel.GLabel label = Transaction.run(
                 () -> {
-                    CellLoop<Long> timeLoop = new CellLoop<>();
-                    SLabel label = new SLabel(timeLoop.map(i -> Long.toString(i)));
-                    timeLoop.loop(time.map(i->(i-t0)/1000));
-                    frame.add(label);
+                    CellLoop<Double> timeLoop = new CellLoop<>();
+                    GPanel.GLabel label_ = new GPanel.GLabel(timeLoop.map(i -> String.format("%.3f",i)));
+                    timeLoop.loop(test.time);
+                    return label_;
                 }
         );
-        frame.setSize(400,160);
-        frame.setVisible(true);
+        mainPanel.add(label);
+        test.frame.add(mainPanel);
+        test.frame.setVisible(true);
+
 
         while (true) {
-            long t = time.sample();
-            long tDest = tCurrent + 100;
-            long tDiff = tDest - t;
-            if (tDiff > 0){
-                try {Thread.sleep(tDiff);}
-                catch (InterruptedException e){}
-            }
-            sMain.send(Unit.UNIT);
-            tCurrent = tDest;
+            long t = System.currentTimeMillis();
+            long tIdeal = tLast + 100;
+            long toWait = tIdeal - t;
+            if (toWait > 0)
+                try { Thread.sleep(toWait); } catch (InterruptedException e) {}
+            test.time.send((double)(tIdeal - t0) * 0.001);
+            test.sTick.send(Unit.UNIT);
+            tLast = tIdeal;
         }
     }
-
-
 }
