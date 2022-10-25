@@ -19,7 +19,7 @@ public class GPanel extends JPanel {
         this(axis, panelSize, new Dimension(10,10));
     }
     public GPanel(int axis){
-        this(axis, new Dimension(450, 200));
+        this(axis, new Dimension(800, 30));
     }
 
     @Override

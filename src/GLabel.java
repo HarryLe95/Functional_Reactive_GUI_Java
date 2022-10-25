@@ -23,7 +23,7 @@ public class GLabel extends SLabel {
     }
 
     public GLabel(Cell<String> text, boolean setBackgroundColor) {
-        this(text, new Dimension(150, 20), setBackgroundColor);
+        this(text, new Dimension(200, 20), setBackgroundColor);
     }
 
     public GLabel(Cell<String> text) {
