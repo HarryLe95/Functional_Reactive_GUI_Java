@@ -30,6 +30,13 @@ public class GUIFinal extends GpsGUI {
         );
     }
 
+    /**
+     * Add display track for 10 trackers
+     * @param pMain - main panel
+     * @param streams - streams of event as a list of Stream<GpsEvent>
+     * @param tClear - period to retain Gps data to calculate total distance traveled - in seconds. Defaults to
+     *               5 minutes or 300 seconds
+     */
     public void addTrackDisplays(GPanel pMain, Stream<GpsEvent>[] streams, double tClear) {
         GPanel[] pTrackers = new GPanel[streams.length];
         GLabel[] lLat = new GLabel[streams.length];
@@ -132,6 +139,10 @@ public class GUIFinal extends GpsGUI {
         }
     }
 
+    /**
+     * Add control panel consisting of the labels, the textfields, and a set button to manage filter params
+     * @param pMain - main panel
+     */
     public void addControlPanel(GPanel pMain) {
         GPanel pControlTitle = new GPanel(BoxLayout.PAGE_AXIS);
         GPanel pControlLabel = new GPanel(BoxLayout.LINE_AXIS);
@@ -212,6 +223,10 @@ public class GUIFinal extends GpsGUI {
         pMain.add(pControlButton);
     }
 
+    /**
+     * Add a display to show the latest event and a display to show the filtered latest event
+     * @param pMain - main panel
+     */
     public void addEventDisplays(GPanel pMain) {
         GPanel pDisplay = new GPanel(BoxLayout.LINE_AXIS);
 

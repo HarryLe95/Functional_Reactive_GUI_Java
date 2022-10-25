@@ -1,3 +1,10 @@
+/**
+ * Point data structure representing 3D points in Euclidean plane.
+ *
+ * Static factory methods from to construct a Point object from GpsService fields.
+ * Static method distance to calculate Euclidean distance.
+ */
+
 package src;
 
 public class Point{

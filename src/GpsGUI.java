@@ -1,5 +1,9 @@
 package src;
 
+/**
+ * GUI Class implemented using FRP concepts
+ */
+
 import nz.sodium.*;
 
 import javax.swing.*;
@@ -12,6 +16,10 @@ public class GpsGUI {
 
     public JFrame frame;
 
+    /**
+     * Run infinite loop that sends unit event every dt milliseconds
+     * @param dt update resolution in milliseconds
+     */
     public void runLoop(int dt){
         long t0 = System.currentTimeMillis();
         long tLast = t0;
