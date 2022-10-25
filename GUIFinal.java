@@ -114,7 +114,7 @@ public class GUIFinal extends GpsGUI {
                         double tMax = Collections.max(j.keySet());
                         return String.format("%.3f", j.get(tMax).second -j.get(tMin).second);
                     }
-            ),new Dimension(180,20));
+            ),new Dimension(150,20));
 
             pTrackers[index] = new GPanel(BoxLayout.LINE_AXIS);
             pTrackers[index].add(new GLabel(new Cell<>("Tracker " + index), new Dimension(60,20),
@@ -213,8 +213,7 @@ public class GUIFinal extends GpsGUI {
     }
 
     public void addEventDisplays(GPanel pMain) {
-        GPanel pLatest = new GPanel(BoxLayout.LINE_AXIS);
-        GPanel pFiltered = new GPanel(BoxLayout.LINE_AXIS);
+        GPanel pDisplay = new GPanel(BoxLayout.LINE_AXIS);
 
         Stream<String> sStringLatest = sMerged.map(
                 i -> i.name.replace("Tracker", "") + "," +
@@ -244,12 +243,13 @@ public class GUIFinal extends GpsGUI {
 
         cTimeLatest.loop(sStringLatest.map(i -> time.sample()).hold(0.0));
         cTimeFiltered.loop(sStringFiltered.map(i -> time.sample()).hold(0.0));
-        pLatest.add(new GLabel(new Cell<>("Latest Event"), false));
-        pLatest.add(lLatest);
-        pFiltered.add(new GLabel(new Cell<>("Filtered Event"), false));
-        pFiltered.add(lFiltered);
-        pMain.add(pLatest);
-        pMain.add(pFiltered);
+        pDisplay.add(new GLabel(new Cell<>("Latest Event"), new Dimension(80,20)
+                ,false));
+        pDisplay.add(lLatest);
+        pDisplay.add(new GLabel(new Cell<>("Filtered Event"), new Dimension(80,20)
+                ,false));
+        pDisplay.add(lFiltered);
+        pMain.add(pDisplay);
     }
 
     public static void main(String[] args) {
@@ -261,8 +261,8 @@ public class GUIFinal extends GpsGUI {
         Transaction.runVoid(
                 () -> {
                     GUI.addTrackDisplays(pMain, streams, 300);
-                    GUI.addControlPanel(pMain);
                     GUI.addEventDisplays(pMain);
+                    GUI.addControlPanel(pMain);
                 }
         );
         GUI.frame.add(pMain);
