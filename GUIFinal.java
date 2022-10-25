@@ -16,6 +16,8 @@ public class GUIFinal extends GpsGUI {
     CellLoop<Double> cTimeFiltered;
     Stream<GpsEvent> sMerged;
 
+    Stream<GpsEvent> sFiltered;
+
     public GUIFinal(String name, Dimension windowSize) {
         super(name, windowSize);
         Transaction.runVoid(
@@ -46,8 +48,15 @@ public class GUIFinal extends GpsGUI {
         cTimeLast.loop(sUpdateTime.map(i -> time.sample()).hold(0.0));
 
         sMerged = new Stream<>();
+        sFiltered = new Stream<>();
+
         for (int index = 0; index < streams.length; index++) {
             sMerged = sMerged.orElse(streams[index]);
+            sFiltered = sFiltered.orElse(streams[index].filter(
+                    i -> (i.latitude >= cLatBounds.sample().first) &&
+                    (i.latitude <= cLatBounds.sample().second) &&
+                    (i.longitude >= cLongBounds.sample().first) &&
+                    (i.longitude <= cLongBounds.sample().second)));
             cDistances[index] = new CellLoop<>();
             lLat[index] = new GLabel(streams[index].map(j -> String.format("%.8f", j.latitude)).hold(""),
                     new Dimension(150, 20), true);
@@ -69,7 +78,7 @@ public class GUIFinal extends GpsGUI {
                         newDict.put(time.sample(), Pair.of(newPoint, newDist));
                         ArrayList<Double> toRemove = new ArrayList<>();
                         for (double key : newDict.keySet()) {
-                            if (key <= time.sample() - tClear) {
+                            if (key < time.sample() - tClear) {
                                 toRemove.add(key);
                             }
                         }
@@ -84,7 +93,7 @@ public class GUIFinal extends GpsGUI {
                         HashMap<Double, Pair<Point, Double>> newDict = new HashMap<>(cDistances[k].sample());
                         ArrayList<Double> toRemove = new ArrayList<>();
                         for (double key : newDict.keySet()) {
-                            if (key <= time.sample() - tClear) {
+                            if (key < time.sample() - tClear) {
                                 toRemove.add(key);
                             }
                         }
@@ -220,11 +229,7 @@ public class GUIFinal extends GpsGUI {
                 new Dimension(200, 20), true);
 
 
-        Stream<String> sStringFiltered = sMerged.filter(
-                i -> (i.latitude >= cLatBounds.sample().first) &&
-                        (i.latitude <= cLatBounds.sample().second) &&
-                        (i.longitude >= cLongBounds.sample().first) &&
-                        (i.longitude <= cLongBounds.sample().second)).map(
+        Stream<String> sStringFiltered = sFiltered.map(
                 i -> i.name.replace("Tracker", "") + "," +
                         String.format("%3.3f", i.latitude) + "," +
                         String.format("%3.3f", i.longitude) + "," +
@@ -255,7 +260,7 @@ public class GUIFinal extends GpsGUI {
         Stream<GpsEvent>[] streams = serv.getEventStreams();
         Transaction.runVoid(
                 () -> {
-                    GUI.addTrackDisplays(pMain, streams, 300000);
+                    GUI.addTrackDisplays(pMain, streams, 300);
                     GUI.addControlPanel(pMain);
                     GUI.addEventDisplays(pMain);
                 }
