@@ -295,7 +295,7 @@ public class GUIFinal extends GpsGUI {
         pDisplay.add(new GLabel(new Cell<>("Latest Event"), new Dimension(80, 20)
                 , false));
         pDisplay.add(lLatest);
-        pDisplay.add(new GLabel(new Cell<>("Filtered Event"), new Dimension(80, 20)
+        pDisplay.add(new GLabel(new Cell<>("Filtered Event"), new Dimension(90, 20)
                 , false));
         pDisplay.add(lFiltered);
         pMain.add(pDisplay);

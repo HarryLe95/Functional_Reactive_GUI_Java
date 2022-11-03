@@ -43,6 +43,6 @@ See [here](testing.md). Test GUI with simulated data with `GUITest.java`.
 
 - `GpsEvent/GpsService/gps.data/Example` - provided classes.
 - `GUI/GUIRefactored/GUIFinal` - GUI classes at different development stages.
-- `GUITest` - testing of `GUIFinal` using regular-interval known simulated data streams.
+- `GUITest` and `GUITest_Filtered` - testing of `GUIFinal` using regular-interval known simulated data streams.
 
 
