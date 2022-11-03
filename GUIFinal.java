@@ -32,19 +32,21 @@ public class GUIFinal extends GpsGUI {
 
     /**
      * Add display track for 10 trackers
-     * @param pMain - main panel
+     *
+     * @param pMain   - main panel
      * @param streams - streams of event as a list of Stream<GpsEvent>
-     * @param tClear - period to retain Gps data to calculate total distance traveled - in seconds. Defaults to
-     *               5 minutes or 300 seconds
+     * @param tClear  - period to retain Gps data to calculate total distance traveled - in seconds. Defaults to
+     *                5 minutes or 300 seconds
      */
     public void addTrackDisplays(GPanel pMain, Stream<GpsEvent>[] streams, double tClear) {
         GPanel[] pTrackers = new GPanel[streams.length];
         GLabel[] lLat = new GLabel[streams.length];
         GLabel[] lLong = new GLabel[streams.length];
         GLabel[] lDist = new GLabel[streams.length];
-        CellLoop<HashMap<Double, Pair<Point, Double>>> cDistances[] = new CellLoop[streams.length];
+        CellLoop<HashMap<Double, Point>> cDistances[] = new CellLoop[streams.length];
         CellLoop<Double> cTimeLast = new CellLoop<>();
 
+        //Unit stream sent every tClear seconds (300s) to check buffer removal logic
         Stream<Unit> sUpdateTime = Stream.filterOptional(
                 sTick.map(i -> {
                     return time.sample() - cTimeLast.sample() >= tClear
@@ -52,37 +54,39 @@ public class GUIFinal extends GpsGUI {
                 })
         );
 
+        //cTimeLast holds the timestamp of the sUpdateTime event
         cTimeLast.loop(sUpdateTime.map(i -> time.sample()).hold(0.0));
 
         sMerged = new Stream<>();
         sFiltered = new Stream<>();
 
         for (int index = 0; index < streams.length; index++) {
+            //Merge and Filtered Merge streams
             sMerged = sMerged.orElse(streams[index]);
             sFiltered = sFiltered.orElse(streams[index].filter(
                     i -> (i.latitude >= cLatBounds.sample().first) &&
-                    (i.latitude <= cLatBounds.sample().second) &&
-                    (i.longitude >= cLongBounds.sample().first) &&
-                    (i.longitude <= cLongBounds.sample().second)));
+                            (i.latitude <= cLatBounds.sample().second) &&
+                            (i.longitude >= cLongBounds.sample().first) &&
+                            (i.longitude <= cLongBounds.sample().second)));
+
+
             cDistances[index] = new CellLoop<>();
             lLat[index] = new GLabel(streams[index].map(j -> String.format("%.8f", j.latitude)).hold(""),
                     new Dimension(150, 20), true);
             lLong[index] = new GLabel(streams[index].map(j -> String.format("%.8f", j.longitude)).hold(""),
                     new Dimension(150, 20), true);
 
-            Stream<HashMap<Double, Pair<Point, Double>>> sUpdateEvent =
+            //Buffer that holds and removes data every tClear seconds (300s or 5mins)
+            //Buffer implemented as a dictionary with key - event and value - point object
+            Stream<HashMap<Double, Point>> sUpdateEvent =
                     streams[index].snapshot(new Cell<>(index), (j, k) -> {
-                        HashMap<Double, Pair<Point, Double>> newDict = new HashMap<>(cDistances[k].sample());
+                        HashMap<Double, Point> newDict = new HashMap<>(cDistances[k].sample());
                         Point newPoint = Point.from(j.latitude, j.longitude, j.altitude);
-                        if (newDict.isEmpty()){
-                            newDict.put(time.sample(), Pair.of(newPoint, 0.0));
-                            return newDict;
-                        }
-                        double lastTime = Collections.max(newDict.keySet());
-                        Point lastPoint = newDict.get(lastTime).first;
-                        double lastDist = newDict.get(lastTime).second;
-                        double newDist = lastDist + Point.distance(lastPoint, newPoint);
-                        newDict.put(time.sample(), Pair.of(newPoint, newDist));
+
+                        //Put latest arrived event to buffer
+                        newDict.put(time.sample(), newPoint);
+
+                        //Remove outdated events
                         ArrayList<Double> toRemove = new ArrayList<>();
                         for (double key : newDict.keySet()) {
                             if (key < time.sample() - tClear) {
@@ -95,9 +99,9 @@ public class GUIFinal extends GpsGUI {
                         return newDict;
                     });
 
-            Stream<HashMap<Double, Pair<Point, Double>>> sRemoveTime = sUpdateTime.snapshot(new Cell<>(index),
+            Stream<HashMap<Double, Point>> sRemoveTime = sUpdateTime.snapshot(new Cell<>(index),
                     (u, k) -> {
-                        HashMap<Double, Pair<Point, Double>> newDict = new HashMap<>(cDistances[k].sample());
+                        HashMap<Double, Point> newDict = new HashMap<>(cDistances[k].sample());
                         ArrayList<Double> toRemove = new ArrayList<>();
                         for (double key : newDict.keySet()) {
                             if (key < time.sample() - tClear) {
@@ -110,29 +114,56 @@ public class GUIFinal extends GpsGUI {
                         return newDict;
                     }
             );
-            Stream<HashMap<Double, Pair<Point, Double>>> sUpdateDistance = sUpdateEvent.orElse(sRemoveTime);
+            Stream<HashMap<Double, Point>> sUpdateDistance = sUpdateEvent.orElse(sRemoveTime);
             cDistances[index].loop(sUpdateDistance.hold(new HashMap<>()));
+
+            //Distance label - calculate total pairwise distance travelled in the buffer
+            //Only calculate distances for events that are in the filter range
             lDist[index] = new GLabel(cDistances[index].map(
-                    j->{
-                        if (j.isEmpty()){
+                    j -> {
+                        if (j.isEmpty()) {
                             return " ";
                         }
-                        double tMin = Collections.min(j.keySet());
-                        double tMax = Collections.max(j.keySet());
-                        return String.format("%.3f", j.get(tMax).second -j.get(tMin).second);
+                        //Filter valid points
+                        ArrayList<Double> sortedTime = new ArrayList<>(j.keySet());
+                        Collections.sort(sortedTime);
+                        ArrayList<Point> validArray = new ArrayList<>();
+                        for (Double time : sortedTime) {
+                            Point p = j.get(time);
+                            if ((p.getLat() >= cLatBounds.sample().first)&&
+                                    (p.getLat() <= cLatBounds.sample().second)&&
+                                    (p.getLon()>= cLongBounds.sample().first)&&
+                                    (p.getLon()<= cLongBounds.sample().second)) {
+                                validArray.add(p);
+                            }
+                        }
+
+                        //Get Total distance
+                        if (validArray.isEmpty()){
+                            return "0";
+                        }
+
+                        double totalDistance = 0;
+                        Point currentPoint = validArray.get(0);
+                        for (int i = 1; i < validArray.size(); i++) {
+                            Point nextPoint = validArray.get(i);
+                            totalDistance += Point.distance(nextPoint, currentPoint);
+                            currentPoint = nextPoint;
+                        }
+                        return String.format("%.3f", totalDistance);
                     }
-            ),new Dimension(150,20));
+            ), new Dimension(1000, 20));
 
             pTrackers[index] = new GPanel(BoxLayout.LINE_AXIS);
-            pTrackers[index].add(new GLabel(new Cell<>("Tracker " + index), new Dimension(60,20),
+            pTrackers[index].add(new GLabel(new Cell<>("Tracker " + index), new Dimension(60, 20),
                     false));
-            pTrackers[index].add(new GLabel(new Cell<>("Latitude"), new Dimension(60,20),
-                    false));
-            pTrackers[index].add(lLat[index]);
-            pTrackers[index].add(new GLabel(new Cell<>("Longitude"),new Dimension(60,20),
-                    false));
-            pTrackers[index].add(lLong[index]);
-            pTrackers[index].add(new GLabel(new Cell<>("Distance"), new Dimension(60,20),
+//            pTrackers[index].add(new GLabel(new Cell<>("Latitude"), new Dimension(60, 20),
+//                    false));
+//            pTrackers[index].add(lLat[index]);
+//            pTrackers[index].add(new GLabel(new Cell<>("Longitude"), new Dimension(60, 20),
+//                    false));
+//            pTrackers[index].add(lLong[index]);
+            pTrackers[index].add(new GLabel(new Cell<>("Distance"), new Dimension(60, 20),
                     false));
             pTrackers[index].add(lDist[index]);
             pMain.add(pTrackers[index]);
@@ -141,6 +172,7 @@ public class GUIFinal extends GpsGUI {
 
     /**
      * Add control panel consisting of the labels, the textfields, and a set button to manage filter params
+     *
      * @param pMain - main panel
      */
     public void addControlPanel(GPanel pMain) {
@@ -225,6 +257,7 @@ public class GUIFinal extends GpsGUI {
 
     /**
      * Add a display to show the latest event and a display to show the filtered latest event
+     *
      * @param pMain - main panel
      */
     public void addEventDisplays(GPanel pMain) {
@@ -258,11 +291,11 @@ public class GUIFinal extends GpsGUI {
 
         cTimeLatest.loop(sStringLatest.map(i -> time.sample()).hold(0.0));
         cTimeFiltered.loop(sStringFiltered.map(i -> time.sample()).hold(0.0));
-        pDisplay.add(new GLabel(new Cell<>("Latest Event"), new Dimension(80,20)
-                ,false));
+        pDisplay.add(new GLabel(new Cell<>("Latest Event"), new Dimension(80, 20)
+                , false));
         pDisplay.add(lLatest);
-        pDisplay.add(new GLabel(new Cell<>("Filtered Event"), new Dimension(80,20)
-                ,false));
+        pDisplay.add(new GLabel(new Cell<>("Filtered Event"), new Dimension(80, 20)
+                , false));
         pDisplay.add(lFiltered);
         pMain.add(pDisplay);
     }

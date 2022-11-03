@@ -8,6 +8,18 @@
 package src;
 
 public class Point{
+    public double getLat() {
+        return lat;
+    }
+
+    public double getLon() {
+        return lon;
+    }
+
+    public double getAlt() {
+        return alt;
+    }
+
     double lat;
     double lon;
     double alt;
@@ -20,16 +32,18 @@ public class Point{
         this.lat = lat;
         this.lon = lon;
         this.alt = alt;
-        this.x = Math.cos(this.lat)*Math.cos(this.lon)*this.alt;
-        this.y = Math.cos(this.lat)*Math.sin(this.lon)*this.alt;
-        this.z = Math.sin(this.lat)*this.alt;
+
+        double lat_ = lat/180*Math.PI;
+        double lon_ = lon/180*Math.PI;
+        double alt_ = alt/3.281 + radius_;
+
+        this.x = Math.cos(lat_)*Math.cos(lon_)*alt_;
+        this.y = Math.cos(lat_)*Math.sin(lon_)*alt_;
+        this.z = Math.sin(lat_)*alt_;
     }
 
     public static Point from(double lat, double lon, double alt){
-        double alt_ = alt/3.281 + radius_;
-        double lat_ = lat/180*Math.PI;
-        double lon_ = lon/180*Math.PI;
-        return new Point(lat_,lon_,alt_);
+        return new Point(lat,lon,alt);
     }
 
     public static Double distance(Point p1, Point p2){

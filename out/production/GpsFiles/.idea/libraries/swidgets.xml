@@ -2,6 +2,7 @@
   <library name="swidgets">
     <CLASSES>
       <root url="jar://$USER_HOME$/OneDrive/Desktop/sodium/book/swidgets/java/swidgets/swidgets.jar!/" />
+      <root url="jar://$PROJECT_DIR$/../sodium/book/swidgets/java/target/sodium-swidgets-1.1.0.jar!/" />
     </CLASSES>
     <JAVADOC />
     <SOURCES />
