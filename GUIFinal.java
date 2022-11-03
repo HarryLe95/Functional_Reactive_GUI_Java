@@ -125,6 +125,7 @@ public class GUIFinal extends GpsGUI {
                             return " ";
                         }
                         //Filter valid points
+                        //Valid points stored in an array sorted by time of arrival
                         ArrayList<Double> sortedTime = new ArrayList<>(j.keySet());
                         Collections.sort(sortedTime);
                         ArrayList<Point> validArray = new ArrayList<>();
@@ -152,17 +153,17 @@ public class GUIFinal extends GpsGUI {
                         }
                         return String.format("%.3f", totalDistance);
                     }
-            ), new Dimension(1000, 20));
+            ), new Dimension(150, 20));
 
             pTrackers[index] = new GPanel(BoxLayout.LINE_AXIS);
             pTrackers[index].add(new GLabel(new Cell<>("Tracker " + index), new Dimension(60, 20),
                     false));
-//            pTrackers[index].add(new GLabel(new Cell<>("Latitude"), new Dimension(60, 20),
-//                    false));
-//            pTrackers[index].add(lLat[index]);
-//            pTrackers[index].add(new GLabel(new Cell<>("Longitude"), new Dimension(60, 20),
-//                    false));
-//            pTrackers[index].add(lLong[index]);
+            pTrackers[index].add(new GLabel(new Cell<>("Latitude"), new Dimension(60, 20),
+                    false));
+            pTrackers[index].add(lLat[index]);
+            pTrackers[index].add(new GLabel(new Cell<>("Longitude"), new Dimension(60, 20),
+                    false));
+            pTrackers[index].add(lLong[index]);
             pTrackers[index].add(new GLabel(new Cell<>("Distance"), new Dimension(60, 20),
                     false));
             pTrackers[index].add(lDist[index]);
