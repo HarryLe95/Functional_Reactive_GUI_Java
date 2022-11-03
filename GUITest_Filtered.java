@@ -8,7 +8,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.util.Optional;
 
-public class GUITest extends GUIFinal {
+public class GUITest_Filtered extends GUIFinal {
     public final double tClear;
 
     public Stream<GpsEvent>[] streams;
@@ -19,18 +19,17 @@ public class GUITest extends GUIFinal {
      * @param name       - name of the frame
      * @param windowSize - window dimension
      * @param numStreams - number of display streams to generate data
-     * @param dtFactor   - controls each event stream fire rate. Each stream is fired at regular interval of (id+1)*dtFactor
      * @param tClear     - time period to retain event data in memory to calculate distance travelled. 5 mins or 300s in the
      *                   official GUI but reduced to 5s for testing purposes.
      */
-    public GUITest(String name, Dimension windowSize,
-                   int numStreams, double dtFactor, double tClear) {
+    public GUITest_Filtered(String name, Dimension windowSize,
+                            int numStreams, double tClear) {
         super(name, windowSize);
         this.tClear = tClear;
         this.streams = new Stream[numStreams];
         for (int index = 0; index < numStreams; index++) {
             streams[index] = generateEvent(Integer.toString(index),
-                    index * 10, index * 10, (index + 1) * dtFactor, false);
+                    index * 10, index * 10, 1, true);
         }
     }
 
@@ -58,14 +57,15 @@ public class GUITest extends GUIFinal {
                     if (!changeLoc) {
                         return sGen.map(u -> new GpsEvent(name, lat, lon, time.sample() * 3.281));
                     }
-                    return sGen.map(u -> new GpsEvent(name, lat, Math.floorMod((int) Math.floor(time.sample()), 2) * 100, 0));
+                    return sGen.map(u -> new GpsEvent(name, lat, Math.floorMod((int)
+                            Math.floor(time.sample()),(int) this.tClear) * 1, 0));
 
                 });
         return event;
     }
 
     public static void main(String[] args) {
-        GUITest GUI = new GUITest("GpsTracker", new Dimension(850, 600), 10, 0.5, 5);
+        GUITest_Filtered GUI = new GUITest_Filtered("GpsTracker", new Dimension(850, 600), 1,  5);
         GPanel pMain = new GPanel(BoxLayout.PAGE_AXIS);
 
         Transaction.runVoid(

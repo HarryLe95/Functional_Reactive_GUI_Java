@@ -89,7 +89,7 @@ public class GUIFinal extends GpsGUI {
                         //Remove outdated events
                         ArrayList<Double> toRemove = new ArrayList<>();
                         for (double key : newDict.keySet()) {
-                            if (key < time.sample() - tClear) {
+                            if (key <= time.sample() - tClear) {
                                 toRemove.add(key);
                             }
                         }
@@ -104,7 +104,7 @@ public class GUIFinal extends GpsGUI {
                         HashMap<Double, Point> newDict = new HashMap<>(cDistances[k].sample());
                         ArrayList<Double> toRemove = new ArrayList<>();
                         for (double key : newDict.keySet()) {
-                            if (key < time.sample() - tClear) {
+                            if (key <= time.sample() - tClear) {
                                 toRemove.add(key);
                             }
                         }

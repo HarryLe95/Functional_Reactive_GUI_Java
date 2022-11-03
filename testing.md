@@ -5,6 +5,7 @@ The following features were tested:
 - Set filter bounds correctly.
 - Filter streamed data based on filter. 
 - Automatically add and remove data in a time window.
+- Calculate distance based on events that satisfy constraints
 
 ## Test Setup:
 Using `GUITest.java` script, using the provided parameters in the constructor in 
@@ -108,8 +109,8 @@ the timestamp of the first event in a 5 s window:
 
 ### Test 4.1 
 - Look at distance of tracker 1
-- Expect - 5
-- Output - 5
+- Expect - 4.5
+- Output - 4.5
 - Correct since tracker 1 is updated every 1s, observations with timestamp `t` and `t-5`
 are both in the window.
 
@@ -129,10 +130,10 @@ are both in the window.
 
 ### Test 4.4
 - Look at distance of tracker 4
-- Expect - 5.0
-- Output - 5.0
+- Expect - 2.5
+- Output - 2.5
 - Correct since tracker 4 is updated every 2.5s, observations in a 5 seconds window have TS
-  `[t, t-2.5, t-5]`. Hence, distance is `t-t+5.0=5.0`
+  `[t, t-2.5]`. Hence, distance is `t-t+2.5=2.5`
 
 ### Test 4.5
 - Look at distance of tracker 5
@@ -162,12 +163,40 @@ are both in the window.
 - Correct since tracker 8is updated every 4.5s, observations in a 5 seconds window have TS
   `[t, t-4.5]`. Hence, distance is `t-t+4.5=4.5`
 
-### Test 4.9
-- Look at distance of tracker 9
-- Expect - 5.0
-- Output - 5.0
-- Correct since tracker 9 is updated every 9s, observations in a 5 seconds window have TS
-  `[t, t-5]`. Hence, distance is `t-t+5=5`
+## Test 5 - calculate distance based on filtered events 
+For this task, I use a modified test script - `GUITest_Filtered`, in which event is sent every 
+1s and longitude jumps in a range [0.0, 1.0, 2.0, 3.0, 4.0] while latitude and altitude stays constant.
+Distance travelled between consecutive points is 111km. Hence in a window of 5s, the total distance travelled can be:
+`111 + 111 + 111 + 444 = 777` and `111+111+111+111=444` where `444` is the distance travelled from a point at longitude 4.0 to 0.0. 
+Hence we shall test the filter by at different constraint 
+
+### Test 5.1 
+Set LongLB to -180, LongUB to 180: 
+- Expect distance - 444km and 777km
+- Output - 444km and 777km
+Test passed since all events satisfy the constraint  
+
+### Test 5.2 
+Set LongLB to 10, LongUB to 180:
+- Expect distance - 0km
+- Output - 0km 
+Test passed since no event satisfies the constraint 
+
+### Test 5.3
+Set LongLB to 0, LongUB to 1
+- Expect distance - 111km 
+- Output - 111km 
+Test passed since the two events where distance is computed are from 0 to 1 and from 1 to 0
+
+### Test 5.4
+Set LongLB to 0, LongUB to 2
+- Expect distance - 222km and 333km 
+- Output- 222km and 000km
+Test passed since the events where distance is computed are from 0 to 1 to 2 - distance of 222km and 
+event from 1 to 2 to 0 - distance of 333km. 
+
+
+
 
 
 
